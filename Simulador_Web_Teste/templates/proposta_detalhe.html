@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhe da Proposta{% endblock %}
+
+{% block extra_css %}
+<style>
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+
+  .info-item {
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 14px;
+  }
+
+  .info-item .titulo {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 6px;
+  }
+
+  .info-item .valor {
+    font-size: 16px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .detalhe-grid,
+  .detalhe-linha {
+    display: grid;
+    grid-template-columns: 70px 180px 140px 140px 100px 100px 120px 120px 120px 120px;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 0;
+    min-width: 1350px;
+  }
+
+  .detalhe-grid {
+    font-weight: 700;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 10px;
+  }
+
+  .scroll-x {
+    overflow-x: auto;
+  }
+
+  .resumo-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+  }
+
+  .resumo-item {
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 14px;
+  }
+
+  .resumo-item .titulo {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 6px;
+  }
+
+  .resumo-item .valor {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .benef-grid,
+  .benef-linha {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 0;
+  }
+
+  .benef-grid {
+    font-weight: 700;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 10px;
+  }
+
+  @media (max-width: 1200px) {
+    .info-grid,
+    .resumo-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="topo">
+  <div>
+    <h1>{{ proposta.nome }}</h1>
+    <p>Visualização detalhada da proposta</p>
+  </div>
+
+  <div style="display:flex; gap:10px; flex-wrap:wrap;">
+    <a href="{{ url_for('editar_proposta', proposta_id=proposta.id) }}" class="btn">Editar</a>
+    <a href="{{ url_for('index') }}" class="btn btn-secundario">Voltar</a>
+  </div>
+</div>
+
+<div class="card">
+  <h3 class="bloco-titulo">Dados Gerais</h3>
+
+  <div class="info-grid">
+    <div class="info-item">
+      <div class="titulo">Cliente</div>
+      <div class="valor">{{ proposta.cliente }}</div>
+    </div>
+    <div class="info-item">
+      <div class="titulo">Local</div>
+      <div class="valor">{{ proposta.local }}</div>
+    </div>
+    <div class="info-item">
+      <div class="titulo">Unidade</div>
+      <div class="valor">{{ proposta.unidade }}</div>
+    </div>
+    <div class="info-item">
+      <div class="titulo">Revisão</div>
+      <div class="valor">{{ proposta.revisao }}</div>
+    </div>
+    <div class="info-item">
+      <div class="titulo">Planejador</div>
+      <div class="valor">{{ proposta.planejador }}</div>
+    </div>
+    <div class="info-item">
+      <div class="titulo">CCT</div>
+      <div class="valor">{{ proposta.cct }}</div>
+    </div>
+    <div class="info-item">
+      <div class="titulo">Status</div>
+      <div class="valor">
+        <span class="badge-status {% if proposta.status == 'Ativa' %}status-ativa{% elif proposta.status == 'Em análise' %}status-analise{% else %}status-rascunho{% endif %}">
+          {{ proposta.status }}
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h3 class="bloco-titulo">Composição Operacional</h3>
+
+  <div class="scroll-x">
+    <div class="detalhe-grid">
+      <span>Qtd</span>
+      <span>Função</span>
+      <span>Obs</span>
+      <span>Setor</span>
+      <span>Início</span>
+      <span>Fim</span>
+      <span>Sal. Base</span>
+      <span>Benefício</span>
+      <span>Desconto</span>
+      <span>Sal. Líq.</span>
+    </div>
+
+    {% for linha in proposta.linhas %}
+    <div class="detalhe-linha">
+      <span>{{ linha.qtd }}</span>
+      <span>{{ linha.funcao }}</span>
+      <span>{{ linha.obs }}</span>
+      <span>{{ linha.setor }}</span>
+      <span>{{ linha.inicio }}</span>
+      <span>{{ linha.fim }}</span>
+      <span>R$ {{ "%.2f"|format(linha.salario_base) }}</span>
+      <span>R$ {{ "%.2f"|format(linha.beneficio_unitario) }}</span>
+      <span>R$ {{ "%.2f"|format(linha.desconto_unitario) }}</span>
+      <span>R$ {{ "%.2f"|format(linha.salario_liquido_unitario) }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card">
+  <h3 class="bloco-titulo">Benefícios Aplicados</h3>
+
+  <div class="benef-grid">
+    <span>Benefício</span>
+    <span>Valor</span>
+    <span>Desconto</span>
+  </div>
+
+  {% for ben in proposta.beneficios %}
+  <div class="benef-linha">
+    <span>{{ ben.nome }}</span>
+    <span>R$ {{ "%.2f"|format(ben.valor) }}</span>
+    <span>R$ {{ "%.2f"|format(ben.desconto) }}</span>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <h3 class="bloco-titulo">Resumo Final</h3>
+
+  <div class="resumo-grid">
+    <div class="resumo-item">
+      <div class="titulo">Total de postos</div>
+      <div class="valor">{{ proposta.resumo.total_postos }}</div>
+    </div>
+
+    <div class="resumo-item">
+      <div class="titulo">Total de funcionários</div>
+      <div class="valor">{{ proposta.resumo.total_funcionarios }}</div>
+    </div>
+
+    <div class="resumo-item">
+      <div class="titulo">Total salário base</div>
+      <div class="valor">R$ {{ "%.2f"|format(proposta.resumo.total_salario_base) }}</div>
+    </div>
+
+    <div class="resumo-item">
+      <div class="titulo">Total benefícios</div>
+      <div class="valor">R$ {{ "%.2f"|format(proposta.resumo.total_beneficios) }}</div>
+    </div>
+
+    <div class="resumo-item">
+      <div class="titulo">Total líquido</div>
+      <div class="valor">R$ {{ "%.2f"|format(proposta.resumo.total_liquido) }}</div>
+    </div>
+  </div>
+</div>
+{% endblock %}

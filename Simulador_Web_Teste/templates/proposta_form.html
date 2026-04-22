@@ -1,0 +1,599 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {% if modo == "editar" %}Editar Proposta{% else %}Nova Proposta{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .form-grid-topo {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .form-grid-topo input,
+  .form-grid-topo select {
+    padding: 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    background: white;
+  }
+
+  .bloco-toggle {
+    margin-top: 20px;
+  }
+
+  .bloco-toggle-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    font-weight: 700;
+  }
+
+  .grid-proposta,
+  .grid-proposta-linha {
+    display: grid;
+    grid-template-columns: 70px 220px 160px 150px 120px 120px 120px 120px 130px 90px 90px;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 0;
+  }
+
+  .grid-proposta {
+    font-weight: 700;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 10px;
+    min-width: 1450px;
+  }
+
+  .grid-proposta-linha {
+    min-width: 1450px;
+  }
+
+  .grid-proposta-linha input,
+  .grid-proposta-linha select {
+    padding: 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    width: 100%;
+    box-sizing: border-box;
+    background: white;
+  }
+
+  .grid-beneficios,
+  .grid-beneficios-linha {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 0;
+  }
+
+  .grid-beneficios {
+    font-weight: 700;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 10px;
+  }
+
+  .resumo-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+  }
+
+  .resumo-item {
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 14px;
+  }
+
+  .resumo-item .titulo {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 6px;
+  }
+
+  .resumo-item .valor {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .acoes-topo {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
+  }
+
+  .acoes-linha-botoes {
+    display: flex;
+    gap: 6px;
+  }
+
+  .btn-mini {
+    border: none;
+    border-radius: 6px;
+    padding: 8px 10px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    color: white;
+    background: #2563eb;
+  }
+
+  .btn-excluir {
+    background: #dc2626;
+  }
+
+  .scroll-x {
+    overflow-x: auto;
+  }
+
+  @media (max-width: 1200px) {
+    .form-grid-topo,
+    .resumo-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="topo">
+  <div>
+    <h1>{% if modo == "editar" %}Editar Proposta{% else %}Cadastro de Proposta{% endif %}</h1>
+    <p>Dados gerais, composição operacional, benefícios aplicados e resumo final</p>
+  </div>
+</div>
+
+<form method="POST">
+  <div class="card">
+    <h3 class="bloco-titulo">1. Dados Gerais</h3>
+
+    <div class="form-grid-topo">
+      <input type="text" name="cliente" placeholder="Nome do cliente" value="{{ proposta.cliente if proposta else '' }}" required>
+      <input type="text" name="local" placeholder="Local" value="{{ proposta.local if proposta else '' }}">
+      <input type="text" name="unidade" placeholder="Unidade" value="{{ proposta.unidade if proposta else '' }}">
+
+      <input type="text" name="revisao" placeholder="Revisão" value="{{ proposta.revisao if proposta else '' }}">
+      <input type="text" name="planejador" placeholder="Planejador" value="{{ proposta.planejador if proposta else '' }}">
+      <select name="status">
+        <option value="Rascunho" {% if proposta and proposta.status == 'Rascunho' %}selected{% endif %}>Rascunho</option>
+        <option value="Ativa" {% if proposta and proposta.status == 'Ativa' %}selected{% endif %}>Ativa</option>
+        <option value="Em análise" {% if proposta and proposta.status == 'Em análise' %}selected{% endif %}>Em análise</option>
+      </select>
+
+      <select name="nome_cct" id="nome_cct" onchange="trocarCCT()" required>
+        <option value="">Selecione a CCT</option>
+        {% for nome_cct in ccts.keys() %}
+        <option value="{{ nome_cct }}" {% if proposta and proposta.cct == nome_cct %}selected{% endif %}>{{ nome_cct }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="card bloco-toggle">
+    <div class="bloco-toggle-header" onclick="toggleQuadroProposta()">
+      <span>2. Composição Operacional</span>
+      <span id="icone-toggle">▾</span>
+    </div>
+
+    <div id="conteudo-proposta" style="display:block; margin-top: 20px;">
+      <div class="acoes-topo">
+        <button type="button" class="btn" onclick="addLinhaProposta()">+ Nova Linha</button>
+        <button type="button" class="btn btn-secundario" onclick="copiarHorarioParaBaixo()">Copiar horário para baixo</button>
+        <button type="button" class="btn btn-secundario" onclick="copiarSetorParaBaixo()">Copiar setor para baixo</button>
+        <button type="button" class="btn btn-secundario" onclick="copiarObsParaBaixo()">Copiar obs para baixo</button>
+      </div>
+
+      <div class="scroll-x">
+        <div class="grid-proposta">
+          <span>Qtd</span>
+          <span>Função</span>
+          <span>Obs</span>
+          <span>Setor</span>
+          <span>Início</span>
+          <span>Fim</span>
+          <span>Sal. Base</span>
+          <span>Benefício</span>
+          <span>Desconto</span>
+          <span>Sal. Líq.</span>
+          <span>Ação</span>
+        </div>
+
+        <div id="tabela-proposta"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card bloco-toggle">
+    <div class="bloco-toggle-header" onclick="toggleBeneficios()">
+      <span>3. Benefícios Aplicados</span>
+      <span id="icone-beneficios">▾</span>
+    </div>
+
+    <div id="conteudo-beneficios" style="display:block; margin-top: 20px;">
+      <div class="grid-beneficios">
+        <span>Benefício</span>
+        <span>Valor</span>
+        <span>Desconto</span>
+      </div>
+      <div id="lista-beneficios"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 class="bloco-titulo">4. Resumo Final</h3>
+
+    <div class="resumo-grid">
+      <div class="resumo-item">
+        <div class="titulo">Total de postos</div>
+        <div class="valor" id="resumo-postos">0</div>
+      </div>
+
+      <div class="resumo-item">
+        <div class="titulo">Total de funcionários</div>
+        <div class="valor" id="resumo-funcionarios">0</div>
+      </div>
+
+      <div class="resumo-item">
+        <div class="titulo">Total salário base</div>
+        <div class="valor" id="resumo-salario-base">R$ 0,00</div>
+      </div>
+
+      <div class="resumo-item">
+        <div class="titulo">Total benefícios</div>
+        <div class="valor" id="resumo-beneficios">R$ 0,00</div>
+      </div>
+
+      <div class="resumo-item">
+        <div class="titulo">Total líquido</div>
+        <div class="valor" id="resumo-liquido">R$ 0,00</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top: 20px; display:flex; gap:10px; flex-wrap:wrap;">
+    <button type="submit" class="btn">
+      {% if modo == "editar" %}Salvar Alterações{% else %}Salvar Proposta{% endif %}
+    </button>
+
+    <a href="{{ url_for('index') }}" class="btn btn-secundario">Voltar</a>
+  </div>
+</form>
+
+<script id="dados-proposta" type="application/json">
+{
+  "proposta": {{ proposta|tojson if proposta else 'null' }}
+}
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let funcoesCCT = [];
+let beneficiosCCT = [];
+let propostaEdicao = null;
+
+try {
+  const dadosTela = JSON.parse(document.getElementById("dados-proposta").textContent);
+  propostaEdicao = dadosTela.proposta;
+} catch (e) {
+  propostaEdicao = null;
+}
+
+function formatarMoeda(valor) {
+  return Number(valor || 0).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL"
+  });
+}
+
+function toggleQuadroProposta() {
+  const conteudo = document.getElementById("conteudo-proposta");
+  const icone = document.getElementById("icone-toggle");
+
+  if (conteudo.style.display === "none") {
+    conteudo.style.display = "block";
+    icone.textContent = "▾";
+  } else {
+    conteudo.style.display = "none";
+    icone.textContent = "▸";
+  }
+}
+
+function toggleBeneficios() {
+  const conteudo = document.getElementById("conteudo-beneficios");
+  const icone = document.getElementById("icone-beneficios");
+
+  if (conteudo.style.display === "none") {
+    conteudo.style.display = "block";
+    icone.textContent = "▾";
+  } else {
+    conteudo.style.display = "none";
+    icone.textContent = "▸";
+  }
+}
+
+function montarOptionsFuncoes(funcaoSelecionada = "") {
+  let options = '<option value="">Selecione</option>';
+
+  funcoesCCT.forEach(item => {
+    const selected = item.funcao === funcaoSelecionada ? "selected" : "";
+    options += `<option value="${item.funcao}" ${selected}>${item.funcao}</option>`;
+  });
+
+  return options;
+}
+
+function getBeneficioUnitario() {
+  return beneficiosCCT.reduce((acc, item) => acc + Number(item.valor || 0), 0);
+}
+
+function getDescontoUnitario() {
+  return beneficiosCCT.reduce((acc, item) => acc + Number(item.desconto || 0), 0);
+}
+
+function renderizarBeneficios() {
+  const lista = document.getElementById("lista-beneficios");
+  lista.innerHTML = "";
+
+  if (!beneficiosCCT.length) {
+    lista.innerHTML = `<div class="grid-beneficios-linha"><span>Sem benefícios cadastrados para esta CCT</span><span>-</span><span>-</span></div>`;
+    return;
+  }
+
+  beneficiosCCT.forEach(item => {
+    const linha = document.createElement("div");
+    linha.className = "grid-beneficios-linha";
+    linha.innerHTML = `
+      <span>${item.nome}</span>
+      <span>${formatarMoeda(item.valor)}</span>
+      <span>${formatarMoeda(item.desconto)}</span>
+    `;
+    lista.appendChild(linha);
+  });
+}
+
+function criarLinhaHTML(dados = {}) {
+  const qtd = dados.qtd || "";
+  const obs = dados.obs || "";
+  const setor = dados.setor || "";
+  const inicio = dados.inicio || "";
+  const fim = dados.fim || "";
+  const funcao = dados.funcao || "";
+  const salarioBase = Number(dados.salario_base || 0);
+
+  return `
+    <div class="grid-proposta-linha">
+      <input type="number" min="1" name="qtd[]" placeholder="Qtd" value="${qtd}" oninput="recalcularLinha(this.closest('.grid-proposta-linha'))">
+
+      <select name="funcao[]" onchange="atualizarSalario(this)">
+        ${montarOptionsFuncoes(funcao)}
+      </select>
+
+      <input type="text" name="obs[]" placeholder="Obs" value="${obs}">
+      <input type="text" name="setor[]" placeholder="Setor" value="${setor}">
+      <input type="time" name="inicio[]" class="campo-inicio" value="${inicio}">
+      <input type="time" name="fim[]" class="campo-fim" value="${fim}">
+
+      <input type="number" step="0.01" name="salario_base[]" placeholder="Salário base" class="campo-salario" readonly value="${salarioBase ? salarioBase.toFixed(2) : ''}">
+      <input type="number" step="0.01" class="campo-beneficio" readonly>
+      <input type="number" step="0.01" class="campo-desconto" readonly>
+      <input type="number" step="0.01" class="campo-liquido" readonly>
+
+      <div class="acoes-linha-botoes">
+        <button type="button" class="btn-mini" onclick="duplicarLinha(this)">Duplicar</button>
+        <button type="button" class="btn-mini btn-excluir" onclick="removerLinha(this)">X</button>
+      </div>
+    </div>
+  `;
+}
+
+function addLinhaProposta(dados = {}) {
+  const tabela = document.getElementById("tabela-proposta");
+  tabela.insertAdjacentHTML("beforeend", criarLinhaHTML(dados));
+  const novaLinha = tabela.lastElementChild;
+  recalcularLinha(novaLinha);
+}
+
+function duplicarLinha(botao) {
+  const linha = botao.closest(".grid-proposta-linha");
+
+  const dados = {
+    qtd: linha.querySelector('input[name="qtd[]"]').value,
+    funcao: linha.querySelector('select[name="funcao[]"]').value,
+    obs: linha.querySelector('input[name="obs[]"]').value,
+    setor: linha.querySelector('input[name="setor[]"]').value,
+    inicio: linha.querySelector('input[name="inicio[]"]').value,
+    fim: linha.querySelector('input[name="fim[]"]').value,
+    salario_base: linha.querySelector('input[name="salario_base[]"]').value
+  };
+
+  addLinhaProposta(dados);
+  recalcularResumo();
+}
+
+function removerLinha(botao) {
+  botao.closest(".grid-proposta-linha").remove();
+  recalcularResumo();
+}
+
+function atualizarSalario(select) {
+  const funcaoSelecionada = select.value;
+  const linha = select.closest(".grid-proposta-linha");
+  const campoSalario = linha.querySelector(".campo-salario");
+
+  const item = funcoesCCT.find(f => f.funcao === funcaoSelecionada);
+
+  if (item) {
+    campoSalario.value = Number(item.piso).toFixed(2);
+  } else {
+    campoSalario.value = "";
+  }
+
+  recalcularLinha(linha);
+}
+
+function recalcularLinha(linha) {
+  if (!linha) return;
+
+  const campoQtd = linha.querySelector('input[name="qtd[]"]');
+  const campoSalario = linha.querySelector(".campo-salario");
+  const campoBeneficio = linha.querySelector(".campo-beneficio");
+  const campoDesconto = linha.querySelector(".campo-desconto");
+  const campoLiquido = linha.querySelector(".campo-liquido");
+
+  const salario = Number(campoSalario.value || 0);
+  const beneficio = getBeneficioUnitario();
+  const desconto = getDescontoUnitario();
+  const liquido = salario - desconto;
+
+  campoBeneficio.value = beneficio.toFixed(2);
+  campoDesconto.value = desconto.toFixed(2);
+  campoLiquido.value = liquido.toFixed(2);
+
+  recalcularResumo();
+}
+
+function recalcularResumo() {
+  const linhas = document.querySelectorAll(".grid-proposta-linha");
+
+  let totalPostos = 0;
+  let totalFuncionarios = 0;
+  let totalSalarioBase = 0;
+  let totalBeneficios = 0;
+  let totalLiquido = 0;
+
+  linhas.forEach(linha => {
+    const qtd = Number(linha.querySelector('input[name="qtd[]"]').value || 0);
+    const salarioBase = Number(linha.querySelector(".campo-salario").value || 0);
+    const beneficio = Number(linha.querySelector(".campo-beneficio").value || 0);
+    const liquido = Number(linha.querySelector(".campo-liquido").value || 0);
+    const funcao = linha.querySelector('select[name="funcao[]"]').value;
+
+    if (qtd || funcao) {
+      totalPostos += 1;
+    }
+
+    totalFuncionarios += qtd;
+    totalSalarioBase += qtd * salarioBase;
+    totalBeneficios += qtd * beneficio;
+    totalLiquido += qtd * liquido;
+  });
+
+  document.getElementById("resumo-postos").textContent = totalPostos;
+  document.getElementById("resumo-funcionarios").textContent = totalFuncionarios;
+  document.getElementById("resumo-salario-base").textContent = formatarMoeda(totalSalarioBase);
+  document.getElementById("resumo-beneficios").textContent = formatarMoeda(totalBeneficios);
+  document.getElementById("resumo-liquido").textContent = formatarMoeda(totalLiquido);
+}
+
+function copiarHorarioParaBaixo() {
+  const linhas = document.querySelectorAll(".grid-proposta-linha");
+  if (!linhas.length) return;
+
+  const primeiroInicio = linhas[0].querySelector('input[name="inicio[]"]').value;
+  const primeiroFim = linhas[0].querySelector('input[name="fim[]"]').value;
+
+  linhas.forEach((linha, index) => {
+    if (index > 0) {
+      linha.querySelector('input[name="inicio[]"]').value = primeiroInicio;
+      linha.querySelector('input[name="fim[]"]').value = primeiroFim;
+    }
+  });
+}
+
+function copiarSetorParaBaixo() {
+  const linhas = document.querySelectorAll(".grid-proposta-linha");
+  if (!linhas.length) return;
+
+  const primeiroValor = linhas[0].querySelector('input[name="setor[]"]').value;
+
+  linhas.forEach((linha, index) => {
+    if (index > 0) {
+      linha.querySelector('input[name="setor[]"]').value = primeiroValor;
+    }
+  });
+}
+
+function copiarObsParaBaixo() {
+  const linhas = document.querySelectorAll(".grid-proposta-linha");
+  if (!linhas.length) return;
+
+  const primeiroValor = linhas[0].querySelector('input[name="obs[]"]').value;
+
+  linhas.forEach((linha, index) => {
+    if (index > 0) {
+      linha.querySelector('input[name="obs[]"]').value = primeiroValor;
+    }
+  });
+}
+
+async function trocarCCT(recarregarLinhas = true) {
+  const nomeCCT = document.getElementById("nome_cct").value;
+
+  if (!nomeCCT) {
+    funcoesCCT = [];
+    beneficiosCCT = [];
+    renderizarBeneficios();
+    return;
+  }
+
+  const resposta = await fetch(`/buscar-dados-cct/${encodeURIComponent(nomeCCT)}`);
+  const dados = await resposta.json();
+
+  funcoesCCT = dados.funcoes || [];
+  beneficiosCCT = dados.beneficios || [];
+
+  renderizarBeneficios();
+
+  if (recarregarLinhas) {
+    document.getElementById("tabela-proposta").innerHTML = "";
+    addLinhaProposta();
+  } else {
+    document.querySelectorAll('.grid-proposta-linha').forEach(linha => {
+      const select = linha.querySelector('select[name="funcao[]"]');
+      const valorAtual = select.value;
+      select.innerHTML = montarOptionsFuncoes(valorAtual);
+      atualizarSalario(select);
+    });
+  }
+
+  recalcularResumo();
+}
+
+window.onload = async function() {
+  if (propostaEdicao && propostaEdicao.cct) {
+    await trocarCCT(false);
+
+    document.getElementById("tabela-proposta").innerHTML = "";
+
+    if (propostaEdicao.linhas && propostaEdicao.linhas.length) {
+      propostaEdicao.linhas.forEach(linha => addLinhaProposta(linha));
+    } else {
+      addLinhaProposta();
+    }
+
+    document.querySelectorAll('.grid-proposta-linha').forEach(linha => {
+      recalcularLinha(linha);
+    });
+  } else {
+    addLinhaProposta();
+  }
+
+  const cctSelect = document.getElementById("nome_cct");
+  if (cctSelect.value && !propostaEdicao) {
+    await trocarCCT(true);
+  }
+
+  recalcularResumo();
+};
+</script>
+{% endblock %}
